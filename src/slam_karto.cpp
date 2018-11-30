@@ -85,9 +85,9 @@ class SlamKarto
     nav_msgs::GetMap::Response map_;
 
     // Storage for ROS parameters
-    std::string odom_frame_;
-    std::string map_frame_;
-    std::string base_frame_;
+    std::string odom_frame_;     //里程计的坐标
+    std::string map_frame_;      //地图起点
+    std::string base_frame_;     //应该是指车的坐标
     int throttle_scans_;
     ros::Duration map_update_interval_;
     double resolution_;
@@ -165,18 +165,22 @@ SlamKarto::SlamKarto() :
   if(private_nh_.getParam("use_scan_matching", use_scan_matching))
     mapper_->setParamUseScanMatching(use_scan_matching);
   
+  //使用每个scan的质心来查看两个scan的距离
   bool use_scan_barycenter;
   if(private_nh_.getParam("use_scan_barycenter", use_scan_barycenter))
     mapper_->setParamUseScanBarycenter(use_scan_barycenter);
 
+  //设置最小距离，里程计移动长度超过此距离，则建立一个节点
   double minimum_travel_distance;
   if(private_nh_.getParam("minimum_travel_distance", minimum_travel_distance))
     mapper_->setParamMinimumTravelDistance(minimum_travel_distance);
-
+  
+  //设置最小偏转角，如果里程计转向超过此值，则建立一个节点
   double minimum_travel_heading;
   if(private_nh_.getParam("minimum_travel_heading", minimum_travel_heading))
     mapper_->setParamMinimumTravelHeading(minimum_travel_heading);
-
+  
+  //设置scanbuffer的长度
   int scan_buffer_size;
   if(private_nh_.getParam("scan_buffer_size", scan_buffer_size))
     mapper_->setParamScanBufferSize(scan_buffer_size);
@@ -185,22 +189,27 @@ SlamKarto::SlamKarto() :
   if(private_nh_.getParam("scan_buffer_maximum_scan_distance", scan_buffer_maximum_scan_distance))
     mapper_->setParamScanBufferMaximumScanDistance(scan_buffer_maximum_scan_distance);
 
+  //设置回环匹配最小响应阈值，大于此值才开始进行高精度匹配
   double link_match_minimum_response_fine;
   if(private_nh_.getParam("link_match_minimum_response_fine", link_match_minimum_response_fine))
     mapper_->setParamLinkMatchMinimumResponseFine(link_match_minimum_response_fine);
-
+  
+  //设置两个连接的scans最大距离，大于此值则不考虑两者的响应阈值
   double link_scan_maximum_distance;
   if(private_nh_.getParam("link_scan_maximum_distance", link_scan_maximum_distance))
     mapper_->setParamLinkScanMaximumDistance(link_scan_maximum_distance);
-
+  
+  //搜寻回环匹配的最大距离
   double loop_search_maximum_distance;
   if(private_nh_.getParam("loop_search_maximum_distance", loop_search_maximum_distance))
     mapper_->setParamLoopSearchMaximumDistance(loop_search_maximum_distance);
-
+  
+  //做回环匹配
   bool do_loop_closing;
   if(private_nh_.getParam("do_loop_closing", do_loop_closing))
     mapper_->setParamDoLoopClosing(do_loop_closing);
-
+  
+  //找到回环匹配的node，必须位于大于此值的scanbuffer上
   int loop_match_minimum_chain_size;
   if(private_nh_.getParam("loop_match_minimum_chain_size", loop_match_minimum_chain_size))
     mapper_->setParamLoopMatchMinimumChainSize(loop_match_minimum_chain_size);
@@ -218,43 +227,49 @@ SlamKarto::SlamKarto() :
     mapper_->setParamLoopMatchMinimumResponseFine(loop_match_minimum_response_fine);
 
   // Setting Correlation Parameters from the Parameter Server
-
+  
+  //纠正位姿时使用的匹配器的大小
   double correlation_search_space_dimension;
   if(private_nh_.getParam("correlation_search_space_dimension", correlation_search_space_dimension))
     mapper_->setParamCorrelationSearchSpaceDimension(correlation_search_space_dimension);
 
+  //纠正位姿时使用的解析度
   double correlation_search_space_resolution;
   if(private_nh_.getParam("correlation_search_space_resolution", correlation_search_space_resolution))
     mapper_->setParamCorrelationSearchSpaceResolution(correlation_search_space_resolution);
 
+  //纠正位姿时将会被此值平滑
   double correlation_search_space_smear_deviation;
   if(private_nh_.getParam("correlation_search_space_smear_deviation", correlation_search_space_smear_deviation))
     mapper_->setParamCorrelationSearchSpaceSmearDeviation(correlation_search_space_smear_deviation);
 
   // Setting Correlation Parameters, Loop Closure Parameters from the Parameter Server
-
+  
+  //回环检测时匹配器的大小
   double loop_search_space_dimension;
   if(private_nh_.getParam("loop_search_space_dimension", loop_search_space_dimension))
     mapper_->setParamLoopSearchSpaceDimension(loop_search_space_dimension);
-
+  
+  //回环检测时匹配器的分辨率
   double loop_search_space_resolution;
   if(private_nh_.getParam("loop_search_space_resolution", loop_search_space_resolution))
     mapper_->setParamLoopSearchSpaceResolution(loop_search_space_resolution);
 
+  //回环检测时的平滑系数
   double loop_search_space_smear_deviation;
   if(private_nh_.getParam("loop_search_space_smear_deviation", loop_search_space_smear_deviation))
     mapper_->setParamLoopSearchSpaceSmearDeviation(loop_search_space_smear_deviation);
 
   // Setting Scan Matcher Parameters from the Parameter Server
-
+  //scan-matching 时对里程计的补偿系数
   double distance_variance_penalty;
   if(private_nh_.getParam("distance_variance_penalty", distance_variance_penalty))
     mapper_->setParamDistanceVariancePenalty(distance_variance_penalty);
-
+  //scan-matching时对角度的补偿系数
   double angle_variance_penalty;
   if(private_nh_.getParam("angle_variance_penalty", angle_variance_penalty))
     mapper_->setParamAngleVariancePenalty(angle_variance_penalty);
-
+  //精细匹配时搜索的角度范围
   double fine_search_angle_offset;
   if(private_nh_.getParam("fine_search_angle_offset", fine_search_angle_offset))
     mapper_->setParamFineSearchAngleOffset(fine_search_angle_offset);
@@ -266,15 +281,15 @@ SlamKarto::SlamKarto() :
   double coarse_angle_resolution;
   if(private_nh_.getParam("coarse_angle_resolution", coarse_angle_resolution))
     mapper_->setParamCoarseAngleResolution(coarse_angle_resolution);
-
+  //最小角度补偿，防止评分过小
   double minimum_angle_penalty;
   if(private_nh_.getParam("minimum_angle_penalty", minimum_angle_penalty))
     mapper_->setParamMinimumAnglePenalty(minimum_angle_penalty);
-
+  //最小距离补偿，防止评分过小
   double minimum_distance_penalty;
   if(private_nh_.getParam("minimum_distance_penalty", minimum_distance_penalty))
     mapper_->setParamMinimumDistancePenalty(minimum_distance_penalty);
-
+  //在没有发现好的匹配的情况下，是否增加搜索范围
   bool use_response_expansion;
   if(private_nh_.getParam("use_response_expansion", use_response_expansion))
     mapper_->setParamUseResponseExpansion(use_response_expansion);
@@ -319,6 +334,8 @@ SlamKarto::publishLoop(double transform_publish_period)
   }
 }
 
+// tfb     sendTransform
+// tf::StampedTransform
 void
 SlamKarto::publishTransform()
 {
@@ -327,6 +344,7 @@ SlamKarto::publishTransform()
   tfB_->sendTransform(tf::StampedTransform (map_to_odom_, ros::Time::now(), map_frame_, odom_frame_));
 }
 
+//获取一个laser
 karto::LaserRangeFinder*
 SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
@@ -343,7 +361,7 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     ident.stamp_ = scan->header.stamp;
     try
     {
-      tf_.transformPose(base_frame_, ident, laser_pose);
+      tf_.transformPose(base_frame_, ident, laser_pose);    //根据 base_frame和 ident的frame_id_（其实也就是scan的名字）就可以获得scan数据也就是laser相对于车的位置
     }
     catch(tf::TransformException e)
     {
@@ -365,11 +383,11 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
 
     tf::Vector3 v;
     v.setValue(0, 0, 1 + laser_pose.getOrigin().z());
-    tf::Stamped<tf::Vector3> up(v, scan->header.stamp, base_frame_);
+    tf::Stamped<tf::Vector3> up(v, scan->header.stamp, base_frame_);  // tf::Stamped<T>
 
     try
     {
-      tf_.transformPoint(scan->header.frame_id, up, up);
+      tf_.transformPoint(scan->header.frame_id, up, up);  //transformPoint函数
       ROS_DEBUG("Z-Axis in sensor frame: %.3f", up.z());
     }
     catch (tf::TransformException& e)
@@ -377,7 +395,8 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
       ROS_WARN("Unable to determine orientation of laser: %s", e.what());
       return NULL;
     }
-
+    
+    // lasers_inverted_应该是存储车上的laser是否反了，是个map<frame_id, bool>
     bool inverse = lasers_inverted_[scan->header.frame_id] = up.z() <= 0;
     if (inverse)
       ROS_INFO("laser is mounted upside-down");
@@ -387,10 +406,10 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     // scan
     std::string name = scan->header.frame_id;
     karto::LaserRangeFinder* laser = 
-      karto::LaserRangeFinder::CreateLaserRangeFinder(karto::LaserRangeFinder_Custom, karto::Name(name));
+      karto::LaserRangeFinder::CreateLaserRangeFinder(karto::LaserRangeFinder_Custom, karto::Name(name));  //创建自定义laser
     laser->SetOffsetPose(karto::Pose2(laser_pose.getOrigin().x(),
 				      laser_pose.getOrigin().y(),
-				      yaw));
+				      yaw));   //这都是相对于世界坐标系的，getOrigin应该是固定哪个，就把哪个作为参考系吧，应该是这样
     laser->SetMinimumRange(scan->range_min);
     laser->SetMaximumRange(scan->range_max);
     laser->SetMinimumAngle(scan->angle_min);
@@ -406,19 +425,21 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     dataset_->Add(laser);
   }
 
-  return lasers_[scan->header.frame_id];
+  return lasers_[scan->header.frame_id];  
 }
 
 bool
 SlamKarto::getOdomPose(karto::Pose2& karto_pose, const ros::Time& t)
 {
-  // Get the robot's pose
+  // Get the robot's pose  //开始时认为？？？？这下面的transformPose有点和上面用法不一样啊
+  //懂了  虽然用的车也就是base_frame_，但其实是指karto构图的起点，在后面会用到
   tf::Stamped<tf::Pose> ident (tf::Transform(tf::createQuaternionFromRPY(0,0,0),
                                            tf::Vector3(0,0,0)), t, base_frame_);
+  //这个ident相对于base_frame_这个坐标系的四元数为（0,0,0,1），平移为（0,0,0）
   tf::Stamped<tf::Transform> odom_pose;
   try
   {
-    tf_.transformPose(odom_frame_, ident, odom_pose);
+    tf_.transformPose(odom_frame_, ident, odom_pose);  //求ident这个点在odom_frame_坐标系中的表示，存储在odom_pose中
   }
   catch(tf::TransformException e)
   {
@@ -663,7 +684,7 @@ SlamKarto::addScan(karto::LaserRangeFinder* laser,
   // create localized range scan
   karto::LocalizedRangeScan* range_scan = 
     new karto::LocalizedRangeScan(laser->GetName(), readings);
-  range_scan->SetOdometricPose(karto_pose);
+  range_scan->SetOdometricPose(karto_pose);  //初始时设定laser在odom下的坐标
   range_scan->SetCorrectedPose(karto_pose);
 
   // Add the localized range scan to the mapper
@@ -678,6 +699,11 @@ SlamKarto::addScan(karto::LaserRangeFinder* laser,
     tf::Stamped<tf::Pose> odom_to_map;
     try
     {
+      //这个是不是写错了...... //其实没有，  tf::Transform(tf::createQuaternionFromRPY(0, 0, corrected_pose.GetHeading()),描述的是 base坐标原点在map下的坐标，那么inverse就得到了map原点在base下的坐标，
+                            //于是这个tf::Stamped<tf::Pose> (tf::Transform(tf::createQuaternionFromRPY(0, 0, corrected_pose.GetHeading()),
+                                                                    //tf::Vector3(corrected_pose.GetX(), corrected_pose.GetY(), 0.0)).inverse(),
+                                                                    //scan->header.stamp, base_frame_) 其实就是指真实的map原点的坐标，
+                                                                    //这样的话，就可以知道这个函数确实求得了  odom_to_map
       tf_.transformPose(odom_frame_,tf::Stamped<tf::Pose> (tf::Transform(tf::createQuaternionFromRPY(0, 0, corrected_pose.GetHeading()),
                                                                     tf::Vector3(corrected_pose.GetX(), corrected_pose.GetY(), 0.0)).inverse(),
                                                                     scan->header.stamp, base_frame_),odom_to_map);
