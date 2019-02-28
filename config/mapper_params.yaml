@@ -1,22 +1,22 @@
 # General Parameters
 use_scan_matching: true
 use_scan_barycenter: true
-minimum_travel_distance: 0.2 
-minimum_travel_heading: 0.174                  #in radians
-scan_buffer_size: 70
-scan_buffer_maximum_scan_distance: 20.0
-link_match_minimum_response_fine: 0.8
-link_scan_maximum_distance: 10.0
-loop_search_maximum_distance: 4.0
-do_loop_closing: true
+minimum_travel_distance: 0.2    # 关键帧的距离   pepper改小
+minimum_travel_heading: 0.174                  #in radians    # 关键帧间的角度  pepper改小
+scan_buffer_size: 70             
+scan_buffer_maximum_scan_distance: 20.0    # running scans 的首尾帧之间的距离最大值     这个值约等于 关键帧的距离×running scans的数量  pepper改小
+link_match_minimum_response_fine: 0.8      # 判断是否link帧的阈值
+link_scan_maximum_distance: 10.0           # link帧的搜索范围， pepper应该改小
+loop_search_maximum_distance: 4.0          # 闭环检测时 搜索范围
+do_loop_closing: true  
 loop_match_minimum_chain_size: 10
 loop_match_maximum_variance_coarse: 0.4     # gets squared later
 loop_match_minimum_response_coarse: 0.8
 loop_match_minimum_response_fine: 0.8
 
 # Correlation Parameters - Correlation Parameters
-correlation_search_space_dimension: 0.3
-correlation_search_space_resolution: 0.01
+correlation_search_space_dimension: 0.3     # ScanMatch 时用于计算正确结果时的一个移动范围，在这个范围内选择最好的位置  
+correlation_search_space_resolution: 0.01   # scanmatch 移动采样的距离角度分辨率
 correlation_search_space_smear_deviation: 0.03
 
 # Correlation Parameters - Loop Closure Parameters
